@@ -363,15 +363,24 @@ td .t { display: block; font-size: 10.5px; color: var(--muted); }
     <div class="card sheet">
       <h2>입금 알림 연결하기</h2>
       <p class="sub" style="margin:0">한 번만 해 두면, 은행 앱에 입금 알림이 올 때마다 꿀꿀이가 알아서 반응해요.</p>
-      <ol class="steps">
-        <li>위의 <b>꿀꿀이 코드</b>를 <b>복사</b>해요.</li>
-        <li>아래 <b>꿀꿀전송 단축어 받기</b>를 누르고 <b>단축어 추가</b>를 눌러요.</li>
-        <li>질문이 나오면 <b>코드</b>를 붙여넣고, 입금 알림을 받는 <b>은행 앱</b>을 골라요.</li>
-        <li>단축어 앱에서 <b>꿀꿀전송</b>을 열고 <b>자동화 스위치</b>를 켜면 끝이에요.</li>
-      </ol>
+      <div class="field">
+        <label for="bankSel">내 은행</label>
+        <select class="text-in" id="bankSel">
+          <option value="kakao">카카오뱅크</option>
+          <option value="toss">토스뱅크</option>
+          <option value="kb">KB국민은행</option>
+          <option value="shinhan">신한은행</option>
+          <option value="woori">우리은행</option>
+          <option value="hana">하나은행</option>
+          <option value="nh">NH농협은행</option>
+          <option value="etc">그 밖의 은행 앱</option>
+          <option value="sms">문자(SMS)로 입금 알림 받기</option>
+        </select>
+      </div>
+      <ol class="steps" id="connectSteps"></ol>
       <a class="primary" id="btnShortcut" href="#" target="_blank" rel="noopener">꿀꿀전송 단축어 받기</a>
       <p class="note" id="shortcutMissing" hidden>단축어 링크가 아직 등록되지 않았어요. 관리자에게 물어봐 주세요.</p>
-      <p class="note">은행 앱의 입출금 알림이 켜져 있고, 알림에 '잔액'이 보여야 인식돼요.</p>
+      <p class="note" id="bankNote"></p>
     </div>
 
     <div class="card sheet">
@@ -725,6 +734,41 @@ const SHORTCUT_URL = "https://www.icloud.com/shortcuts/12d05130a4f244d38aadc3702
     } catch (e) { toast(authErr(e)); }
     finally { btn.disabled = false; }
   });
+
+  // ---------- 입금 알림 연결 안내 ----------
+  const BANKS = {
+    kakao:   { app: '카카오뱅크' },
+    toss:    { app: '토스' },
+    kb:      { app: 'KB스타뱅킹' },
+    shinhan: { app: '신한 SOL뱅크' },
+    woori:   { app: '우리WON뱅킹' },
+    hana:    { app: '하나원큐' },
+    nh:      { app: 'NH올원뱅크' },
+    etc:     { app: '내 은행 앱' },
+    sms:     { app: '메시지', sms: true }
+  };
+  function li(html) { const el = document.createElement('li'); el.innerHTML = html; return el; }
+  function renderSteps() {
+    const key = $('bankSel').value, b = BANKS[key] || BANKS.kakao;
+    try { localStorage.setItem('kkul.bank', key); } catch (e) {}
+    const ol = $('connectSteps'); ol.textContent = '';
+    ol.append(
+      li('위의 <b>꿀꿀이 코드</b>를 <b>복사</b>해요.'),
+      li('아래 <b>꿀꿀전송 단축어 받기</b>를 누르고 <b>단축어 추가</b>를 눌러요.'),
+      li('질문이 나오면 <b>코드</b>를 붙여넣고, 앱 목록에서 <b>' + b.app + '</b> 앱을 골라요.'),
+      li('단축어 앱에서 <b>꿀꿀전송</b>을 열고 <b>자동화 스위치</b>를 켜면 끝이에요.')
+    );
+    $('bankNote').textContent = b.sms
+      ? '은행에 입출금 문자(SMS) 알림을 신청해 두어야 해요. 문자에 \'잔액\'이 함께 오는지 확인해 주세요.'
+      : (key === 'etc' ? '은행 앱' : b.app + ' 앱') + '에서 입출금 알림을 켜 두고, 알림에 \'잔액\'이 보이는지 확인해 주세요. 잔액이 안 보이는 은행이면 \'문자(SMS)로 입금 알림 받기\'를 골라 주세요.';
+  }
+  (function initBank() {
+    let saved = null;
+    try { saved = localStorage.getItem('kkul.bank'); } catch (e) {}
+    if (saved && BANKS[saved]) $('bankSel').value = saved;
+    $('bankSel').addEventListener('change', renderSteps);
+    renderSteps();
+  })();
 
   // ---------- 내 꿀꿀이 ----------
   $('btnMy').addEventListener('click', () => {
