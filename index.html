@@ -114,6 +114,7 @@ button { cursor: pointer; }
 .money span { font-family: var(--f-display); font-size: 18px; color: var(--muted); }
 .text-in { border: 1.5px solid var(--line); border-radius: 12px; background: var(--paper); height: 48px; padding: 0 12px; width: 100%; }
 .text-in:focus { border-color: var(--accent); outline: 0; }
+select.text-in { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 20px) 21px, calc(100% - 14px) 21px; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; font-size: 16px; }
 .code-in { font-family: var(--f-mono); letter-spacing: 1px; text-transform: lowercase; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -360,16 +361,26 @@ td .t { display: block; font-size: 10.5px; color: var(--muted); }
     </div>
 
     <div class="card sheet">
-      <h2>은행 문자 연결하기</h2>
-      <p class="sub" style="margin:0">아이폰에서 한 번만 해 두면, 입금 문자가 올 때마다 꿀꿀이가 알아서 반응해요.</p>
-      <ol class="steps">
-        <li>위의 <b>꿀꿀이 코드</b>를 복사해요.</li>
-        <li><b>꿀꿀전송 단축어 받기</b>를 눌러 '단축어 추가'를 누르고, 코드를 묻는 칸에 붙여넣어요.</li>
-        <li>단축어 앱 → <b>자동화</b> → <b>+</b> → <b>메시지</b> → '메시지 포함'에 <b>입금</b> 입력 → <b>즉시 실행</b> 선택 → 다음</li>
-        <li><b>꿀꿀전송</b>을 고르면 끝이에요. 빈 자동화가 열리면 '단축어 실행'을 추가해 꿀꿀전송을 고르고 입력을 <b>메시지</b>로 정해 주세요.</li>
-      </ol>
+      <h2>입금 알림 연결하기</h2>
+      <p class="sub" style="margin:0">아이폰에서 한 번만 해 두면, 입금 알림이 올 때마다 꿀꿀이가 알아서 반응해요.</p>
+      <div class="field">
+        <label for="bankSel">내 은행</label>
+        <select class="text-in" id="bankSel">
+          <option value="kakao">카카오뱅크</option>
+          <option value="toss">토스뱅크</option>
+          <option value="kb">KB국민은행</option>
+          <option value="shinhan">신한은행</option>
+          <option value="woori">우리은행</option>
+          <option value="hana">하나은행</option>
+          <option value="nh">NH농협은행</option>
+          <option value="etc">그 밖의 은행 앱</option>
+          <option value="sms">문자(SMS)로 입금 알림 받기</option>
+        </select>
+      </div>
+      <ol class="steps" id="connectSteps"></ol>
       <a class="primary" id="btnShortcut" href="#" target="_blank" rel="noopener">꿀꿀전송 단축어 받기</a>
       <p class="note" id="shortcutMissing" hidden>단축어 링크가 아직 등록되지 않았어요. 관리자에게 물어봐 주세요.</p>
+      <p class="note" id="bankNote"></p>
     </div>
 
     <div class="card sheet">
@@ -723,6 +734,50 @@ const SHORTCUT_URL = "";
     } catch (e) { toast(authErr(e)); }
     finally { btn.disabled = false; }
   });
+
+  // ---------- 입금 알림 연결 안내 ----------
+  const BANKS = {
+    kakao:   { app: '카카오뱅크' },
+    toss:    { app: '토스' },
+    kb:      { app: 'KB스타뱅킹' },
+    shinhan: { app: '신한 SOL뱅크' },
+    woori:   { app: '우리WON뱅킹' },
+    hana:    { app: '하나원큐' },
+    nh:      { app: 'NH올원뱅크' },
+    etc:     { app: '내 은행 앱' },
+    sms:     { sms: true }
+  };
+  function li(html) { const el = document.createElement('li'); el.innerHTML = html; return el; }
+  function renderSteps() {
+    const key = $('bankSel').value, b = BANKS[key] || BANKS.kakao;
+    try { localStorage.setItem('kkul.bank', key); } catch (e) {}
+    const ol = $('connectSteps'); ol.textContent = '';
+    ol.append(
+      li('위의 <b>꿀꿀이 코드</b>를 <b>복사</b>해요.'),
+      li('<b>꿀꿀전송 단축어 받기</b> → \'단축어 추가\' → 코드를 묻는 칸에 붙여넣어요.')
+    );
+    if (b.sms) {
+      ol.append(
+        li('단축어 앱 → <b>자동화</b> → <b>+</b> → <b>메시지</b> → \'메시지 포함\'에 <b>잔액</b> 입력 → <b>즉시 실행</b> → 다음'),
+        li('<b>꿀꿀전송</b>을 고르면 끝이에요.')
+      );
+      $('bankNote').textContent = '은행 앱에서 입출금 문자(SMS) 알림을 신청해 두어야 해요. 문자에 \'잔액\'이 함께 오는지 확인해 주세요.';
+    } else {
+      ol.append(
+        li('단축어 앱 → <b>자동화</b> → <b>+</b> → <b>알림</b>(앱에서 알림을 수신할 때) → 앱에서 <b>' + b.app + '</b> 선택'),
+        li('필터: <b>메시지</b> / 다음을 포함 / <b>잔액</b> → <b>즉시 실행</b> → 다음'),
+        li('<b>꿀꿀전송</b>을 고르면 끝이에요.')
+      );
+      $('bankNote').textContent = (key === 'etc' ? '은행 앱' : b.app + ' 앱') + '의 입출금 알림을 켜 두고, 알림에 \'잔액\'이 보이는지 확인해 주세요. 앱 알림 자동화가 목록에 없으면 iOS를 업데이트하거나 맨 아래 \'문자(SMS)로 입금 알림 받기\'를 골라 주세요.';
+    }
+  }
+  (function initBank() {
+    let saved = null;
+    try { saved = localStorage.getItem('kkul.bank'); } catch (e) {}
+    if (saved && BANKS[saved]) $('bankSel').value = saved;
+    $('bankSel').addEventListener('change', renderSteps);
+    renderSteps();
+  })();
 
   // ---------- 내 꿀꿀이 ----------
   $('btnMy').addEventListener('click', () => {
